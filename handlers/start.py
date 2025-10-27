@@ -1,5 +1,6 @@
 from pyrogram import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.errors import UserNotParticipant, ChatAdminRequired
 from config import Config
 import logging
 
@@ -16,40 +17,73 @@ async def start_command(client: Client, message):
     
     # Check force subscribe
     fsub_mode = await client.db.get_bot_setting("fsub_mode", "off")
+    
     if fsub_mode in ["on", "request"]:
         channels = await client.db.get_fsub_channels()
-        not_joined = []
         
-        for channel_id in channels:
-            try:
-                member = await client.get_chat_member(channel_id, user_id)
-                if member.status not in ["member", "administrator", "creator"]:
-                    not_joined.append(channel_id)
-            except:
-                pass
-        
-        if not_joined:
-            buttons = []
-            for channel_id in not_joined:
+        if channels:
+            not_joined = []
+            
+            for channel_id in channels:
                 try:
-                    chat = await client.get_chat(channel_id)
-                    invite_link = chat.invite_link or f"https://t.me/{chat.username}"
-                    buttons.append([InlineKeyboardButton(f"Join {chat.title}", url=invite_link)])
-                except:
-                    pass
+                    member = await client.get_chat_member(channel_id, user_id)
+                    # Check if user is actually a member
+                    if member.status not in ["member", "administrator", "creator"]:
+                        not_joined.append(channel_id)
+                except UserNotParticipant:
+                    not_joined.append(channel_id)
+                except ChatAdminRequired:
+                    logger.error(f"Bot is not admin in channel {channel_id}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error checking membership in {channel_id}: {e}")
+                    continue
             
-            buttons.append([InlineKeyboardButton("✅ Refresh", callback_data="check_fsub")])
-            
-            await message.reply_text(
-                "⚠️ **You must join these channels to use the bot:**\n\n"
-                "Click the buttons below to join, then click Refresh.",
-                reply_markup=InlineKeyboardMarkup(buttons)
-            )
-            return
+            # If user hasn't joined all required channels
+            if not_joined:
+                buttons = []
+                
+                for channel_id in not_joined:
+                    try:
+                        chat = await client.get_chat(channel_id)
+                        # Get invite link
+                        if chat.username:
+                            invite_link = f"https://t.me/{chat.username}"
+                        else:
+                            try:
+                                invite_link = await client.export_chat_invite_link(channel_id)
+                            except:
+                                invite_link = chat.invite_link
+                        
+                        if invite_link:
+                            buttons.append([InlineKeyboardButton(
+                                f"Join {chat.title}", 
+                                url=invite_link
+                            )])
+                    except Exception as e:
+                        logger.error(f"Error getting channel info {channel_id}: {e}")
+                        continue
+                
+                # Add refresh button
+                buttons.append([InlineKeyboardButton("✅ Refresh", callback_data="check_fsub")])
+                
+                await message.reply_text(
+                    "⚠️ **You must join these channels to use the bot:**\n\n"
+                    "Click the buttons below to join, then click **Refresh** to verify.",
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
+                return
+    
+    # User has joined all channels or fsub is disabled - show main menu
+    await show_main_menu(client, message)
+
+async def show_main_menu(client: Client, message):
+    """Show main menu to user"""
+    user_id = message.from_user.id
     
     # Check if premium user
     is_premium = await client.db.is_premium_user(user_id)
-    premium_text = "👑 Premium User" if is_premium else ""
+    premium_text = "\n\n👑 **Premium User**" if is_premium else ""
     
     buttons = [
         [
@@ -63,7 +97,7 @@ async def start_command(client: Client, message):
     ]
     
     await message.reply_text(
-        Config.START_MESSAGE + f"\n\n{premium_text}",
+        Config.START_MESSAGE + premium_text,
         reply_markup=InlineKeyboardMarkup(buttons),
         disable_web_page_preview=True
     )
