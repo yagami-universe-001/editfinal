@@ -252,7 +252,7 @@ async def media_handler(client, message):
 # Callback query handler
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
-    from handlers.callbacks import handle_callback
+    from handlers.callback import handle_callback
     await handle_callback(client, callback_query)
 
 if __name__ == "__main__":
