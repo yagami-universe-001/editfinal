@@ -1,5 +1,5 @@
 from pyrogram import Client
-from pyrogram.types import Message
+from pyrogram.types import Message, User
 import os
 import time
 from utils.ffmpeg import FFmpegEncoder
@@ -20,9 +20,10 @@ RESOLUTIONS = {
     "2160p": {"height": 2160, "bitrate": "8M"}
 }
 
-async def encode_video(client: Client, message: Message):
+async def encode_video(client: Client, message: Message, from_user: User = None):
     """Encode video to specific quality"""
-    user_id = message.from_user.id
+    user = from_user or message.from_user
+    user_id = user.id
     command = message.command[0].replace("/", "")
     
     if command not in RESOLUTIONS:
@@ -206,7 +207,7 @@ async def encode_all_qualities(client: Client, message: Message):
             temp_msg.command = [quality]
             temp_msg.reply_to_message = message.reply_to_message
             
-            await encode_video(client, temp_msg)
+            await encode_video(client, temp_msg, from_user=message.from_user)
             await temp_msg.delete()
             
             completed += 1
