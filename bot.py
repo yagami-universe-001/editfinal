@@ -40,11 +40,11 @@ class Bot(Client):
 bot = Bot()
 
 # Register handlers
-@bot.on_message(filters.command("start") & filters.private)
+@bot.on_message(filters.command("start") & (filters.private | filters.group))
 async def start_handler(client, message):
     await start.start_command(client, message)
 
-@bot.on_message(filters.command("help") & filters.private)
+@bot.on_message(filters.command("help") & (filters.private | filters.group))
 async def help_handler(client, message):
     await help_command.help_command(client, message)
 
@@ -88,15 +88,15 @@ async def upload_handler(client, message):
     await settings.set_upload_mode(client, message)
 
 # Encoding commands
-@bot.on_message(filters.command(["144p", "240p", "360p", "480p", "720p", "1080p", "2160p"]) & filters.private)
+@bot.on_message(filters.command(["144p", "240p", "360p", "480p", "720p", "1080p", "2160p"]) & (filters.private | filters.group))
 async def encode_handler(client, message):
     await encode.encode_video(client, message)
 
-@bot.on_message(filters.command("all") & filters.private)
+@bot.on_message(filters.command("all") & (filters.private | filters.group))
 async def encode_all_handler(client, message):
     await encode.encode_all_qualities(client, message)
 
-@bot.on_message(filters.command("compress") & filters.private)
+@bot.on_message(filters.command("compress") & (filters.private | filters.group))
 async def compress_handler(client, message):
     await encode.compress_video(client, message)
 
@@ -112,19 +112,6 @@ async def crop_handler(client, message):
 @bot.on_message(filters.command("merge") & filters.private)
 async def merge_handler(client, message):
     await merge.merge_videos(client, message)
-
-# NEW: Register merge-related commands
-@bot.on_message(filters.command("merge_start") & filters.private)
-async def merge_start_handler(client, message):
-    await merge.merge_start(client, message)
-
-@bot.on_message(filters.command("merge_clear") & filters.private)
-async def merge_clear_handler(client, message):
-    await merge.merge_clear(client, message)
-
-@bot.on_message(filters.command("merge_list") & filters.private)
-async def merge_list_handler(client, message):
-    await merge.merge_list(client, message)
 
 # Subtitle commands
 @bot.on_message(filters.command("sub") & filters.private)
@@ -258,22 +245,14 @@ async def update_handler(client, message):
     await admin.git_update(client, message)
 
 # Media handler
-@bot.on_message((filters.video | filters.document) & filters.private)
+@bot.on_message((filters.video | filters.document) & (filters.private | filters.group))
 async def media_handler(client, message):
-    # Check if this is a subtitle file for pending operation
-    if message.document and message.document.file_name:
-        from utils.helpers import is_subtitle_file
-        if is_subtitle_file(message.document.file_name):
-            await subtitle.process_subtitle_file(client, message)
-            return
-    
-    # Otherwise handle as normal media
     await media.handle_media(client, message)
 
-# Callback query handler - FIXED
+# Callback query handler
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
-    from handlers.callback import handle_callback
+    from handlers.callbacks import handle_callback
     await handle_callback(client, callback_query)
 
 if __name__ == "__main__":
