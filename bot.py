@@ -113,6 +113,19 @@ async def crop_handler(client, message):
 async def merge_handler(client, message):
     await merge.merge_videos(client, message)
 
+# NEW: Register merge-related commands
+@bot.on_message(filters.command("merge_start") & filters.private)
+async def merge_start_handler(client, message):
+    await merge.merge_start(client, message)
+
+@bot.on_message(filters.command("merge_clear") & filters.private)
+async def merge_clear_handler(client, message):
+    await merge.merge_clear(client, message)
+
+@bot.on_message(filters.command("merge_list") & filters.private)
+async def merge_list_handler(client, message):
+    await merge.merge_list(client, message)
+
 # Subtitle commands
 @bot.on_message(filters.command("sub") & filters.private)
 async def soft_sub_handler(client, message):
@@ -247,12 +260,20 @@ async def update_handler(client, message):
 # Media handler
 @bot.on_message((filters.video | filters.document) & filters.private)
 async def media_handler(client, message):
+    # Check if this is a subtitle file for pending operation
+    if message.document and message.document.file_name:
+        from utils.helpers import is_subtitle_file
+        if is_subtitle_file(message.document.file_name):
+            await subtitle.process_subtitle_file(client, message)
+            return
+    
+    # Otherwise handle as normal media
     await media.handle_media(client, message)
 
-# Callback query handler
+# Callback query handler - FIXED
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
-    from handlers.callbacks import handle_callback
+    from handlers.callback import handle_callback
     await handle_callback(client, callback_query)
 
 if __name__ == "__main__":
