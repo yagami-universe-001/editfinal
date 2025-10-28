@@ -47,6 +47,8 @@ class Config:
     SHORTENER_TUTORIAL2 = os.environ.get("SHORTENER_TUTORIAL2", "")
     
     # Bot messages
+    START_PIC = os.environ.get("START_PIC", "")  # URL or file_id of start picture
+    
     START_MESSAGE = """
 👋 **Welcome to Video Encoder Bot!**
 
@@ -73,6 +75,11 @@ I can help you encode, compress, and edit videos with various features:
 • Upload as video or document
 • Set custom thumbnails
 • Add watermarks
+
+📝 **File Management**
+• Rename files easily
+• Custom thumbnails
+• Batch operations
 
 Use /help to see all available commands!
 """
