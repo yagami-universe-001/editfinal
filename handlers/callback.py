@@ -56,7 +56,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
     # Start callback
     elif data == "start":
         is_premium = await client.db.is_premium_user(user_id)
-        premium_text = "👑 Premium User" if is_premium else ""
+        premium_text = "\n\n👑 **Premium User**" if is_premium else ""
         
         buttons = [
             [
@@ -69,8 +69,27 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             ]
         ]
         
+        # Try to edit with photo if start pic exists
+        start_pic = await client.db.get_bot_setting("start_pic", "")
+        caption = Config.START_MESSAGE + premium_text
+        
+        if start_pic:
+            try:
+                # Delete old message and send new with photo
+                await callback_query.message.delete()
+                await callback_query.message.chat.send_photo(
+                    photo=start_pic,
+                    caption=caption,
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
+                await callback_query.answer()
+                return
+            except:
+                pass
+        
+        # Fallback to text edit
         await callback_query.message.edit_text(
-            Config.START_MESSAGE + f"\n\n{premium_text}",
+            caption,
             reply_markup=InlineKeyboardMarkup(buttons),
             disable_web_page_preview=True
         )
@@ -215,6 +234,24 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
     elif data == "close":
         await callback_query.message.delete()
         await callback_query.answer()
+    
+    # Save thumbnail from photo
+    elif data.startswith("save_thumb_"):
+        message_id = int(data.split("_")[2])
+        
+        # Get the photo message
+        try:
+            photo_msg = await callback_query.message.chat.get_messages(message_id)
+            if photo_msg.photo:
+                photo = photo_msg.photo.file_id
+                await client.db.set_thumbnail(user_id, photo)
+                await callback_query.answer("✅ Thumbnail saved!", show_alert=True)
+                await callback_query.message.edit_text("✅ **Thumbnail saved successfully!**")
+            else:
+                await callback_query.answer("❌ Photo not found!", show_alert=True)
+        except Exception as e:
+            logger.error(f"Error saving thumbnail: {e}")
+            await callback_query.answer("❌ Error saving thumbnail!", show_alert=True)
     
     else:
         await callback_query.answer("Unknown action!", show_alert=True)
