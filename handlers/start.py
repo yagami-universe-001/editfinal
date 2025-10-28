@@ -96,10 +96,43 @@ async def show_main_menu(client: Client, message):
         ]
     ]
     
-    await message.reply_text(
-        Config.START_MESSAGE + premium_text,
-        reply_markup=InlineKeyboardMarkup(buttons),
-        disable_web_page_preview=True
-    )
+    # Get start picture from config
+    start_pic = Config.START_PIC
+    
+    caption = Config.START_MESSAGE + premium_text
+    
+    # Send with photo if available
+    if start_pic:
+        try:
+            # Check if it's a URL or file_id
+            if start_pic.startswith('http://') or start_pic.startswith('https://'):
+                # It's a URL
+                await message.reply_photo(
+                    photo=start_pic,
+                    caption=caption,
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
+            else:
+                # It's a file_id
+                await message.reply_photo(
+                    photo=start_pic,
+                    caption=caption,
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
+        except Exception as e:
+            logger.error(f"Error sending start picture: {e}")
+            # Fallback to text message
+            await message.reply_text(
+                caption,
+                reply_markup=InlineKeyboardMarkup(buttons),
+                disable_web_page_preview=True
+            )
+    else:
+        # No picture, send text only
+        await message.reply_text(
+            caption,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            disable_web_page_preview=True
+        )
     
     await client.db.update_user_activity(user_id)
