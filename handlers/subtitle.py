@@ -2,7 +2,7 @@ from pyrogram import Client
 from pyrogram.types import Message
 from utils.ffmpeg import FFmpegEncoder
 from utils.helpers import is_subtitle_file, human_readable_size
-from utils.progress import progress_callback
+from utils.progress import sync_progress_callback
 import logging
 import os
 import time
@@ -135,7 +135,7 @@ async def process_subtitle_file(client: Client, message: Message):
         
         video_path = await video_message.download(
             file_name=download_dir,
-            progress=progress_callback,
+            progress=sync_progress_callback,
             progress_args=(status, start_time, "Downloading video")
         )
         
@@ -187,7 +187,7 @@ async def process_subtitle_file(client: Client, message: Message):
                 document=output_path,
                 caption=caption,
                 thumb=thumbnail,
-                progress=progress_callback,
+                progress=sync_progress_callback,
                 progress_args=(status, start_time, "Uploading")
             )
         else:
@@ -197,7 +197,7 @@ async def process_subtitle_file(client: Client, message: Message):
                 thumb=thumbnail,
                 has_spoiler=spoiler,
                 supports_streaming=True,
-                progress=progress_callback,
+                progress=sync_progress_callback,
                 progress_args=(status, start_time, "Uploading")
             )
         
@@ -257,7 +257,7 @@ async def remove_subtitle(client: Client, message: Message):
         
         video_path = await replied.download(
             file_name=download_dir,
-            progress=progress_callback,
+            progress=sync_progress_callback,
             progress_args=(status, start_time, "Downloading")
         )
         
@@ -295,7 +295,7 @@ async def remove_subtitle(client: Client, message: Message):
                 document=output_path,
                 caption=caption,
                 thumb=thumbnail,
-                progress=progress_callback,
+                progress=sync_progress_callback,
                 progress_args=(status, start_time, "Uploading")
             )
         else:
@@ -305,7 +305,7 @@ async def remove_subtitle(client: Client, message: Message):
                 thumb=thumbnail,
                 has_spoiler=spoiler,
                 supports_streaming=True,
-                progress=progress_callback,
+                progress=sync_progress_callback,
                 progress_args=(status, start_time, "Uploading")
             )
         
@@ -357,7 +357,7 @@ async def extract_subtitle(client: Client, message: Message):
         
         video_path = await replied.download(
             file_name=download_dir,
-            progress=progress_callback,
+            progress=sync_progress_callback,
             progress_args=(status, start_time, "Downloading")
         )
         

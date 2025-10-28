@@ -9,28 +9,18 @@ async def set_thumbnail(client: Client, message: Message):
     """Set custom thumbnail"""
     user_id = message.from_user.id
     
-    # Check if message itself has a photo
-    if message.photo:
-        photo = message.photo.file_id
-        await client.db.set_thumbnail(user_id, photo)
-        await message.reply_text("✅ **Thumbnail saved successfully!**")
-        return
-    
     # Check if user replied with a photo
     if message.reply_to_message and message.reply_to_message.photo:
+        # Download and save thumbnail
         photo = message.reply_to_message.photo.file_id
         await client.db.set_thumbnail(user_id, photo)
         await message.reply_text("✅ **Thumbnail saved successfully!**")
-        return
-    
-    # If no photo, show instructions
-    await message.reply_text(
-        "📸 **Set Custom Thumbnail**\n\n"
-        "**Method 1:** Send a photo with caption `/setthumb`\n"
-        "**Method 2:** Reply to a photo with `/setthumb`\n"
-        "**Method 3:** Just send `/setthumb` then send a photo\n\n"
-        "The thumbnail will be used for all your encoded videos."
-    )
+    else:
+        await message.reply_text(
+            "📸 **Set Custom Thumbnail**\n\n"
+            "Reply to this message with a photo to set as your default thumbnail.\n\n"
+            "The thumbnail will be used for all your encoded videos."
+        )
 
 async def get_thumbnail(client: Client, message: Message):
     """Get saved thumbnail"""
@@ -200,4 +190,4 @@ async def set_upload_mode(client: Client, message: Message):
     await message.reply_text(
         f"✅ **Upload mode set to:** {mode.title()}\n\n"
         f"Encoded videos will be uploaded using this mode."
-    )
+  )

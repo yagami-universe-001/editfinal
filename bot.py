@@ -4,7 +4,7 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
 from database import Database
-from handlers import start, help_command, admin, media, settings, encode, subtitle, extract, merge, rename, photo_handler
+from handlers import start, help_command, admin, media, settings, encode, subtitle, extract, merge
 
 # Setup logging
 logging.basicConfig(
@@ -49,11 +49,8 @@ async def help_handler(client, message):
     await help_command.help_command(client, message)
 
 # Thumbnail commands
-@bot.on_message(filters.command("setthumb") & (filters.private | filters.group))
+@bot.on_message(filters.command("setthumb") & filters.private)
 async def setthumb_handler(client, message):
-    # Enable thumbnail mode if no photo in message
-    if not message.photo and not (message.reply_to_message and message.reply_to_message.photo):
-        await photo_handler.enable_thumbnail_mode(message.from_user.id)
     await settings.set_thumbnail(client, message)
 
 @bot.on_message(filters.command("getthumb") & filters.private)
@@ -247,38 +244,15 @@ async def remove_premium_handler(client, message):
 async def update_handler(client, message):
     await admin.git_update(client, message)
 
-# Start picture commands (Admin only)
-@bot.on_message(filters.command("setstartpic") & filters.private & filters.user(Config.ADMINS))
-async def set_startpic_handler(client, message):
-    await admin.set_start_pic(client, message)
-
-@bot.on_message(filters.command("delstartpic") & filters.private & filters.user(Config.ADMINS))
-async def del_startpic_handler(client, message):
-    await admin.delete_start_pic(client, message)
-
-@bot.on_message(filters.command("getstartpic") & filters.private & filters.user(Config.ADMINS))
-async def get_startpic_handler(client, message):
-    await admin.view_start_pic(client, message)
-
 # Media handler
 @bot.on_message((filters.video | filters.document) & (filters.private | filters.group))
 async def media_handler(client, message):
     await media.handle_media(client, message)
 
-# Photo handler for thumbnails
-@bot.on_message(filters.photo & (filters.private | filters.group))
-async def photo_msg_handler(client, message):
-    await photo_handler.handle_photo(client, message)
-
-# Rename command
-@bot.on_message(filters.command("rename") & (filters.private | filters.group))
-async def rename_handler(client, message):
-    await rename.rename_file(client, message)
-
 # Callback query handler
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
-    from handlers.callbacks import handle_callback
+    from handlers.callback import handle_callback
     await handle_callback(client, callback_query)
 
 if __name__ == "__main__":

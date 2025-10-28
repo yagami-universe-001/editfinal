@@ -1,5 +1,19 @@
 import time
+import asyncio
 from utils.helpers import human_readable_size, format_time, format_progress_bar
+
+try:
+    main_loop = asyncio.get_running_loop()
+except RuntimeError:
+    main_loop = None
+
+def sync_progress_callback(current, total, status_message, start_time, action="Processing"):
+    """Synchronous wrapper to call the async progress callback"""
+    if main_loop:
+        asyncio.run_coroutine_threadsafe(
+            progress_callback(current, total, status_message, start_time, action),
+            main_loop
+        )
 
 async def progress_callback(current, total, status_message, start_time, action="Processing"):
     """Progress callback for upload/download"""

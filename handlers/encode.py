@@ -3,7 +3,7 @@ from pyrogram.types import Message, User
 import os
 import time
 from utils.ffmpeg import FFmpegEncoder
-from utils.progress import progress_callback
+from utils.progress import sync_progress_callback
 from utils.helpers import human_readable_size, format_time
 import logging
 
@@ -67,7 +67,7 @@ async def encode_video(client: Client, message: Message, from_user: User = None)
         start_time = time.time()
         download_path = await replied.download(
             file_name=f"./downloads/{user_id}/",
-            progress=progress_callback,
+            progress=sync_progress_callback,
             progress_args=(status, start_time, "Downloading")
         )
         
@@ -133,7 +133,7 @@ async def encode_video(client: Client, message: Message, from_user: User = None)
                 document=output_path,
                 caption=caption,
                 thumb=thumbnail,
-                progress=progress_callback,
+                progress=sync_progress_callback,
                 progress_args=(status, start_time, "Uploading")
             )
         else:
@@ -143,7 +143,7 @@ async def encode_video(client: Client, message: Message, from_user: User = None)
                 thumb=thumbnail,
                 has_spoiler=spoiler,
                 supports_streaming=True,
-                progress=progress_callback,
+                progress=sync_progress_callback,
                 progress_args=(status, start_time, "Uploading")
             )
         
