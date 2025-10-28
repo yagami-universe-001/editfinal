@@ -143,6 +143,16 @@ async def fast_encode_video(client: Client, message: Message):
         media_type = await client.db.get_media_type(user_id)
         spoiler = await client.db.get_spoiler(user_id)
         
+        # Download thumbnail if exists
+        thumb_path = None
+        if thumbnail:
+            try:
+                thumb_path = f"{download_dir}thumb.jpg"
+                await client.download_media(thumbnail, file_name=thumb_path)
+            except Exception as e:
+                logger.error(f"Error downloading thumbnail: {e}")
+                thumb_path = None
+        
         # Upload video with progress
         await status.edit_text(
             f"**▸ File:** `{file_name[:35]}...`\n\n"
@@ -172,14 +182,14 @@ async def fast_encode_video(client: Client, message: Message):
             await message.reply_document(
                 document=output_path,
                 caption=caption,
-                thumb=thumbnail,
+                thumb=thumb_path,
                 progress=lambda c, t: upload_progress.upload_progress(c, t, status, file_name)
             )
         else:
             await message.reply_video(
                 video=output_path,
                 caption=caption,
-                thumb=thumbnail,
+                thumb=thumb_path,
                 has_spoiler=spoiler,
                 supports_streaming=True,
                 progress=lambda c, t: upload_progress.upload_progress(c, t, status, file_name)
@@ -191,6 +201,8 @@ async def fast_encode_video(client: Client, message: Message):
         try:
             os.remove(download_path)
             os.remove(output_path)
+            if thumb_path and os.path.exists(thumb_path):
+                os.remove(thumb_path)
         except:
             pass
         
