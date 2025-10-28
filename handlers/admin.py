@@ -130,16 +130,54 @@ async def add_fsub_channel(client: Client, message: Message):
         await message.reply_text(
             "**Usage:** `/addchnl <channel_id>`\n"
             "**Example:** `/addchnl -1001234567890`\n\n"
-            "Make sure the bot is admin in the channel!"
+            "**Important:**\n"
+            "• Bot must be admin in the channel\n"
+            "• Channel ID must include -100 prefix\n"
+            "• Use @username_to_id_bot to get channel ID"
         )
         return
     
     try:
         channel_id = int(message.command[1])
+        
+        # Verify bot is admin in the channel
+        try:
+            bot_member = await client.get_chat_member(channel_id, "me")
+            if bot_member.status not in ["administrator", "creator"]:
+                await message.reply_text(
+                    "❌ **Bot is not an admin in this channel!**\n\n"
+                    "Please make the bot an admin in the channel first."
+                )
+                return
+        except Exception as e:
+            await message.reply_text(
+                f"❌ **Cannot access channel!**\n\n"
+                f"**Error:** {str(e)}\n\n"
+                f"Make sure:\n"
+                f"• Bot is added to the channel\n"
+                f"• Bot has admin rights\n"
+                f"• Channel ID is correct"
+            )
+            return
+        
+        # Get channel info
+        chat = await client.get_chat(channel_id)
+        
+        # Add to database
         await client.db.add_fsub_channel(channel_id)
-        await message.reply_text(f"✅ **Channel added:** {channel_id}")
-    except:
-        await message.reply_text("❌ Invalid channel ID!")
+        
+        await message.reply_text(
+            f"✅ **Force Subscribe Channel Added!**\n\n"
+            f"**Channel:** {chat.title}\n"
+            f"**ID:** `{channel_id}`\n"
+            f"**Username:** @{chat.username if chat.username else 'Private'}\n\n"
+            f"Users will need to join this channel to use the bot."
+        )
+    except ValueError:
+        await message.reply_text("❌ Invalid channel ID! Must be a number.")
+    except Exception as e:
+        logger.error(f"Error adding fsub channel: {e}")
+        await message.reply_text(f"❌ **Error:** {str(e)}")
 
 async def delete_fsub_channel(client: Client, message: Message):
     """Delete force subscribe channel"""
@@ -380,3 +418,78 @@ async def git_update(client: Client, message: Message):
         await status.edit_text("❌ **Update timeout!**")
     except Exception as e:
         await status.edit_text(f"❌ **Error:** {str(e)}")
+
+async def set_start_pic(client: Client, message: Message):
+    """Set start picture for bot"""
+    if len(message.command) < 2:
+        current_pic = await client.db.get_bot_setting("start_pic", "Not set")
+        
+        await message.reply_text(
+            "🖼️ **Start Picture Settings**\n\n"
+            f"**Current:** {'Set' if current_pic != 'Not set' else 'Not set'}\n\n"
+            "**To set a new picture:**\n\n"
+            "**Method 1 - Reply to photo:**\n"
+            "Reply to a photo with `/setstartpic`\n\n"
+            "**Method 2 - Use URL:**\n"
+            "`/setstartpic <image_url>`\n\n"
+            "**Method 3 - Use file_id:**\n"
+            "`/setstartpic <file_id>`\n\n"
+            "**To remove:**\n"
+            "`/delstartpic`"
+        )
+        return
+    
+    # Check if replied to a photo
+    if message.reply_to_message and message.reply_to_message.photo:
+        photo_id = message.reply_to_message.photo.file_id
+        await client.db.set_bot_setting("start_pic", photo_id)
+        
+        # Update config
+        Config.START_PIC = photo_id
+        
+        await message.reply_text(
+            "✅ **Start picture set successfully!**\n\n"
+            "The new picture will be shown on /start command."
+        )
+        return
+    
+    # Get URL or file_id from command
+    pic_input = message.command[1]
+    
+    # Validate if URL or file_id
+    if pic_input.startswith('http://') or pic_input.startswith('https://'):
+        # It's a URL
+        await client.db.set_bot_setting("start_pic", pic_input)
+        Config.START_PIC = pic_input
+        await message.reply_text("✅ **Start picture URL set successfully!**")
+    else:
+        # Assume it's a file_id
+        await client.db.set_bot_setting("start_pic", pic_input)
+        Config.START_PIC = pic_input
+        await message.reply_text("✅ **Start picture file_id set successfully!**")
+
+async def delete_start_pic(client: Client, message: Message):
+    """Delete start picture"""
+    await client.db.set_bot_setting("start_pic", "")
+    Config.START_PIC = ""
+    await message.reply_text("✅ **Start picture removed!**")
+
+async def view_start_pic(client: Client, message: Message):
+    """View current start picture"""
+    start_pic = await client.db.get_bot_setting("start_pic", "")
+    
+    if not start_pic:
+        await message.reply_text("❌ **No start picture set!**")
+        return
+    
+    try:
+        await message.reply_photo(
+            photo=start_pic,
+            caption="🖼️ **Current Start Picture**"
+        )
+    except Exception as e:
+        await message.reply_text(
+            f"❌ **Error displaying picture!**\n\n"
+            f"**Error:** {str(e)}\n"
+            f"**Picture:** `{start_pic}`"
+        )
