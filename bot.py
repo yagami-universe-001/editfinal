@@ -275,6 +275,21 @@ async def photo_msg_handler(client, message):
 async def rename_handler(client, message):
     await rename.rename_file(client, message)
 
+# Unzip command
+@bot.on_message(filters.command("unzip") & (filters.private | filters.group))
+async def unzip_handler(client, message):
+    await unzip.unzip_file(client, message)
+
+# Stop command (handle both /stop and /stop<task_id>)
+@bot.on_message(filters.regex(r'^/stop'))
+async def stop_handler(client, message):
+    await stop.stop_task(client, message)
+
+# List tasks command
+@bot.on_message(filters.command("tasks") & (filters.private | filters.group))
+async def tasks_handler(client, message):
+    await stop.list_tasks(client, message)
+
 # Callback query handler
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
