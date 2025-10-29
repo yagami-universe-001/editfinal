@@ -7,6 +7,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Path for storing start picture
+START_PIC_PATH = "./start_pic.jpg"
+
 async def restart_bot(client: Client, message: Message):
     """Restart the bot"""
     await message.reply_text("🔄 **Restarting bot...**")
@@ -380,3 +383,107 @@ async def git_update(client: Client, message: Message):
         await status.edit_text("❌ **Update timeout!**")
     except Exception as e:
         await status.edit_text(f"❌ **Error:** {str(e)}")
+
+
+# ========== START PICTURE COMMANDS (FIXED) ==========
+
+async def set_start_pic(client: Client, message: Message):
+    """Set custom start picture for the bot"""
+    
+    # Check if reply to a photo
+    if not message.reply_to_message:
+        await message.reply_text(
+            "❌ **Please reply to a photo!**\n\n"
+            "**How to use:**\n"
+            "1. Send or forward a photo\n"
+            "2. Reply to that photo with `/setstartpic`"
+        )
+        return
+    
+    if not message.reply_to_message.photo:
+        await message.reply_text(
+            "❌ **The replied message must be a photo!**\n\n"
+            "Reply to a photo message with `/setstartpic`"
+        )
+        return
+    
+    try:
+        status = await message.reply_text("⏳ **Downloading photo...**")
+        
+        # Download the photo
+        photo = message.reply_to_message.photo
+        file_path = await client.download_media(photo.file_id)
+        
+        # Remove old start pic if exists
+        if os.path.exists(START_PIC_PATH):
+            try:
+                os.remove(START_PIC_PATH)
+            except:
+                pass
+        
+        # Rename downloaded file to START_PIC_PATH
+        os.rename(file_path, START_PIC_PATH)
+        
+        await status.edit_text(
+            "✅ **Start Picture Updated!**\n\n"
+            "The new photo will be shown when users use /start command.\n\n"
+            "**Commands:**\n"
+            "• `/getstartpic` - View current photo\n"
+            "• `/delstartpic` - Delete custom photo"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error setting start pic: {e}")
+        await message.reply_text(f"❌ **Error:** {str(e)}")
+
+
+async def view_start_pic(client: Client, message: Message):
+    """View current start picture"""
+    
+    if not os.path.exists(START_PIC_PATH):
+        await message.reply_text(
+            "❌ **No Start Picture Set!**\n\n"
+            "Use `/setstartpic` to set a custom start photo.\n\n"
+            "**How to use:**\n"
+            "1. Send or forward a photo\n"
+            "2. Reply to that photo with `/setstartpic`"
+        )
+        return
+    
+    try:
+        await client.send_photo(
+            chat_id=message.chat.id,
+            photo=START_PIC_PATH,
+            caption="**📸 Current Start Picture**\n\nThis photo is displayed with the /start command."
+        )
+    except Exception as e:
+        logger.error(f"Error viewing start pic: {e}")
+        await message.reply_text(f"❌ **Error:** {str(e)}")
+
+
+async def delete_start_pic(client: Client, message: Message):
+    """Delete custom start picture"""
+    
+    if not os.path.exists(START_PIC_PATH):
+        await message.reply_text(
+            "❌ **No Start Picture Found!**\n\n"
+            "There is no custom start picture to delete."
+        )
+        return
+    
+    try:
+        os.remove(START_PIC_PATH)
+        await message.reply_text(
+            "✅ **Start Picture Deleted!**\n\n"
+            "The /start command will now show only text without a photo."
+        )
+    except Exception as e:
+        logger.error(f"Error deleting start pic: {e}")
+        await message.reply_text(f"❌ **Error:** {str(e)}")
+
+
+def get_start_pic_path():
+    """Get start picture path if it exists"""
+    if os.path.exists(START_PIC_PATH):
+        return START_PIC_PATH
+    return None
