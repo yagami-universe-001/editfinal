@@ -1,6 +1,8 @@
 from pyrogram import Client
 from pyrogram.types import Message
 from utils.progress_display import cancel_task, get_user_tasks
+from utils.helpers import format_time
+import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -60,8 +62,9 @@ async def list_tasks(client: Client, message: Message):
     text = f"📋 **Your Active Tasks ({len(tasks)})**\n\n"
     
     for task in tasks:
+        elapsed = time.time() - task.start_time
         text += f"• Task ID: `{task.task_id}`\n"
-        text += f"  Started: {format_time(time.time() - task.start_time)} ago\n\n"
+        text += f"  Started: {format_time(elapsed)} ago\n\n"
     
     text += "\n**To stop a task:** `/stop<task_id>`"
     
