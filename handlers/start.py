@@ -1,105 +1,70 @@
 from pyrogram import Client
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from pyrogram.errors import UserNotParticipant, ChatAdminRequired
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
+import os
 import logging
 
 logger = logging.getLogger(__name__)
 
-async def start_command(client: Client, message):
-    """Handle /start command"""
-    user_id = message.from_user.id
+# Import the function to get start pic path
+START_PIC_PATH = "./start_pic.jpg"
+
+async def start_command(client: Client, message: Message):
+    """Handle /start command with custom start picture support"""
+    
+    user = message.from_user
+    user_id = user.id
+    first_name = user.first_name
     
     # Add user to database
-    if not await client.db.is_user_exist(user_id):
-        await client.db.add_user(user_id)
-        logger.info(f"New user: {user_id}")
+    try:
+        await client.db.add_user(user_id, first_name, user.username if user.username else "")
+    except Exception as e:
+        logger.error(f"Error adding user to database: {e}")
     
-    # Check force subscribe
-    fsub_mode = await client.db.get_bot_setting("fsub_mode", "off")
-    
-    if fsub_mode in ["on", "request"]:
-        channels = await client.db.get_fsub_channels()
-        
-        if channels:
-            not_joined = []
-            
-            for channel_id in channels:
-                try:
-                    member = await client.get_chat_member(channel_id, user_id)
-                    # Check if user is actually a member
-                    if member.status not in ["member", "administrator", "creator"]:
-                        not_joined.append(channel_id)
-                except UserNotParticipant:
-                    not_joined.append(channel_id)
-                except ChatAdminRequired:
-                    logger.error(f"Bot is not admin in channel {channel_id}")
-                    continue
-                except Exception as e:
-                    logger.error(f"Error checking membership in {channel_id}: {e}")
-                    continue
-            
-            # If user hasn't joined all required channels
-            if not_joined:
-                buttons = []
-                
-                for channel_id in not_joined:
-                    try:
-                        chat = await client.get_chat(channel_id)
-                        # Get invite link
-                        if chat.username:
-                            invite_link = f"https://t.me/{chat.username}"
-                        else:
-                            try:
-                                invite_link = await client.export_chat_invite_link(channel_id)
-                            except:
-                                invite_link = chat.invite_link
-                        
-                        if invite_link:
-                            buttons.append([InlineKeyboardButton(
-                                f"Join {chat.title}", 
-                                url=invite_link
-                            )])
-                    except Exception as e:
-                        logger.error(f"Error getting channel info {channel_id}: {e}")
-                        continue
-                
-                # Add refresh button
-                buttons.append([InlineKeyboardButton("✅ Refresh", callback_data="check_fsub")])
-                
-                await message.reply_text(
-                    "⚠️ **You must join these channels to use the bot:**\n\n"
-                    "Click the buttons below to join, then click **Refresh** to verify.",
-                    reply_markup=InlineKeyboardMarkup(buttons)
-                )
-                return
-    
-    # User has joined all channels or fsub is disabled - show main menu
-    await show_main_menu(client, message)
-
-async def show_main_menu(client: Client, message):
-    """Show main menu to user"""
-    user_id = message.from_user.id
-    
-    # Check if premium user
-    is_premium = await client.db.is_premium_user(user_id)
-    premium_text = "\n\n👑 **Premium User**" if is_premium else ""
-    
-    buttons = [
+    # Create inline keyboard
+    keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("📚 Help", callback_data="help"),
             InlineKeyboardButton("⚙️ Settings", callback_data="settings")
         ],
         [
-            InlineKeyboardButton("👨‍💻 Developer", url="https://t.me/yourusername"),
-            InlineKeyboardButton("📢 Updates", url="https://t.me/yourchannel")
+            InlineKeyboardButton("👨‍💻 Developer", url="https://t.me/Leoyagamihere"),
+            InlineKeyboardButton("📢 Updates", url="https://t.me/yagamimoviez")
         ]
-    ]
+    ])
     
-    await message.reply_text(
-        Config.START_MESSAGE + premium_text,
-        reply_markup=InlineKeyboardMarkup(buttons),
-        disable_web_page_preview=True
-    )
+    # Format the start message with user's name
+    text = Config.START_MESSAGE.format(first_name=first_name)
     
-    await client.db.update_user_activity(user_id)
+    # Check if custom start picture exists
+    try:
+        if os.path.exists(START_PIC_PATH):
+            # Send with custom picture
+            await client.send_photo(
+                chat_id=message.chat.id,
+                photo=START_PIC_PATH,
+                caption=text,
+                reply_markup=keyboard
+            )
+            logger.info(f"Sent start message with custom picture to user {user_id}")
+        else:
+            # Send text only (no custom picture set)
+            await message.reply_text(
+                text=text,
+                reply_markup=keyboard,
+                disable_web_page_preview=True
+            )
+            logger.info(f"Sent start message (text only) to user {user_id}")
+    
+    except Exception as e:
+        logger.error(f"Error sending start message with picture: {e}")
+        # Fallback to text if image fails
+        try:
+            await message.reply_text(
+                text=text,
+                reply_markup=keyboard,
+                disable_web_page_preview=True
+            )
+        except Exception as e2:
+            logger.error(f"Error sending fallback start message: {e2}")
